@@ -1,0 +1,7 @@
+*.o
+*.yy.c
+*.yy.h
+*.tab.c
+*.tab.h
+*.so
+*.pyc

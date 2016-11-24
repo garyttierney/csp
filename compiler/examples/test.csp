@@ -1,0 +1,4 @@
+abstract block a {}
+block testconrete inherits test, testb, testc {}
+type v;
+block test inherits a {}
