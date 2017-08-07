@@ -25,18 +25,13 @@
 "^"	{ return TOK_XOR; }
 "="	{ return TOK_EQUALS; }
 ";" { return TOK_SEMICOLON; }
-
-"block" { return TOK_BLOCK; }
+"." { return TOK_DOT; }
+":" { return TOK_COLON; }
+"-" { return TOK_MINUS; }
 "abstract" { return TOK_ABSTRACT; }
-"inherits" { return TOK_INHERITS; }
-"role" { return TOK_ROLE; }
-"role_attribute" { return TOK_ROLE_ATTRIBUTE; }
-"type" { return TOK_TYPE; }
-"type_attribute" { return TOK_TYPE_ATTRIBUTE; }
-"user" { return TOK_USER; }
+"block" { return TOK_BLOCK; }
 
-[a-z]+	{ yylval->name = strdup(yytext); return TOK_NAME; }
-[0-9]+	{ yylval->number = atol(yytext); return TOK_NUMBER; }
+[a-z0-9_]+	{ yylval->name = strdup(yytext); return TOK_NAME; }
 [\s\t ]+	{}
 %%
 

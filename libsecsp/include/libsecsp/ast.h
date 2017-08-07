@@ -16,7 +16,11 @@ enum secsp_node_flavor {
 	SECSP_USER_DECL,
 	SECSP_CONTEXT_DECL,
 	SECSP_DECL_END,
-	SECSP_SET_EXPR
+	SECSP_SET_EXPR,
+	SECSP_CONTEXT_EXPR,
+	SECSP_LEVEL_RANGE_EXPR,
+	SECSP_CATEGORY_RANGE_EXPR,
+	SECSP_LEVEL_EXPR
 };
 
 enum secsp_operator {
@@ -107,5 +111,23 @@ int secsp_setexpr_node_new(struct secsp_setexpr_node **node,
 			    struct secsp_node *lhs,
 			    enum secsp_operator oper,
 			    struct secsp_node *rhs);
+
+struct secsp_context_node;
+
+int secsp_context_node_new(struct secsp_context_node **context,
+			   struct secsp_node *user, struct secsp_node *role,
+			   struct secsp_node *type, struct secsp_node *levelrange);
+
+struct secsp_level_node;
+
+int secsp_level_node_new(struct secsp_level_node **node,
+			    struct secsp_node *sensitivity,
+			    struct secsp_node *categories);
+
+struct secsp_range_node;
+
+int secsp_range_node_new(struct secsp_range_node **node,
+			    enum secsp_node_flavor flavor,
+			    struct secsp_node *low, struct secsp_node *high);
 
 #endif

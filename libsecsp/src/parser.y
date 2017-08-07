@@ -23,6 +23,14 @@
 void yyerror(YYLTYPE *loc, yyscan_t scanner, struct secsp_parse_result *result, char const *msg);
 int secsp_parser_finish(struct secsp_parse_result *result, struct secsp_node_list *root);
 
+
+static struct secsp_context_node *
+create_context_node(struct secsp_node *user, struct secsp_node *role,
+			struct secsp_node *type, struct secsp_node *levelrange);
+
+static struct secsp_level_node *
+create_level_node(struct secsp_node *sensitivity, struct secsp_node *categories);
+
 static struct secsp_block_node *
 create_block_node(const char *name, int is_abstract,
                   struct secsp_node_list *body,
@@ -33,6 +41,9 @@ create_decl_node(const char *name, enum secsp_node_flavor flavor,
                  struct secsp_node *rval);
 
 static struct secsp_sym_node *create_sym_node(const char *val);
+static struct secsp_range_node *create_range_node(enum secsp_node_flavor flavor,
+						  struct secsp_node *low,
+						  struct secsp_node *high);
 
 static struct secsp_setexpr_node *
 create_setexpr_node(struct secsp_node *lhs, enum secsp_operator op,
@@ -55,12 +66,15 @@ create_setexpr_node(struct secsp_node *lhs, enum secsp_operator op,
 %token <number>	NUMBER "number"
 %token <name>	NAME "identifier"
 
+%token MINUS "-"
 %token EOF 0 "end of file"
 %token LPAREN "("
 %token RPAREN ")"
 %token LBRACE "{"
 %token RBRACE "}"
 %token COMMA ","
+%token COLON ":"
+%token DOT "."
 %token <operator> AND "&"
 %token <operator> NOT "~"
 %token <operator> XOR "^"
@@ -71,15 +85,12 @@ create_setexpr_node(struct secsp_node *lhs, enum secsp_operator op,
 %token <name> ABSTRACT "abstract"
 %token <name> BLOCK "block"
 %token <name> INHERITS "inherits"
-%token <name> TYPE "type"
-%token <name> TYPE_ATTRIBUTE "type_attribute"
-%token <name> ROLE "role"
-%token <name> ROLE_ATTRIBUTE "role_attribute"
-%token <name> USER "user"
 
 %type <node_list> statement_list;
 %type <node_list> identifier_list;
 %type <node> statement block_statement decl_statement;
+%type <node> expression category_range_expr level_expr level_range_expr context_expr reference_expr;
+%type <node> level_or_id level_range_or_id
 %type <node> set_expression;
 %type <operator> set_operator;
 %type <name> identifier;
@@ -115,52 +126,70 @@ statement
 		;
 
 block_statement
-		: BLOCK identifier[id] INHERITS identifier_list[inherits] LBRACE
-		    statement_list[stmts] RBRACE {
-			$$ = NODE create_block_node($id, 0, $stmts, $inherits);
+		: ABSTRACT BLOCK identifier[id] LBRACE statement_list[stmts] RBRACE {
+			$$ = NODE create_block_node($id, 1, $stmts, NULL);
 			ABORT_IF_NULL($$);
 		  }
 		| BLOCK identifier[id] LBRACE statement_list[stmts] RBRACE {
 			$$ = NODE create_block_node($id, 0, $stmts, NULL);
 			ABORT_IF_NULL($$)
 		  }
-		| ABSTRACT BLOCK identifier[id] INHERITS identifier_list[inherits] LBRACE
-		    statement_list[stmts] RBRACE {
-			$$ = NODE create_block_node($id, 1, $stmts, $inherits);
+		;
+decl_statement
+		: identifier[type] identifier[id] SEMICOLON {
+			$$ = NODE create_decl_node($id, SECSP_TYPE_DECL, NULL);
 			ABORT_IF_NULL($$);
 		  }
-		| ABSTRACT BLOCK identifier[id] LBRACE statement_list[stmts] RBRACE {
-			$$ = NODE create_block_node($id, 1, $stmts, NULL);
+		| identifier[type] identifier[id] EQUALS expression[expr] SEMICOLON {
+			$$ = NODE create_decl_node($id, SECSP_TYPE_DECL, $expr);
+			ABORT_IF_NULL($$);
+		  };
+expression
+	  : context_expr
+	  | level_range_expr
+	  | level_expr
+	  | category_range_expr
+	  | reference_expr;
+
+reference_expr
+		: identifier[id] {
+			$$ = NODE create_sym_node($id);
+			ABORT_IF_NULL($$);
+		  };
+
+category_range_expr
+		: reference_expr[low] DOT reference_expr[high] {
+			$$ = NODE create_range_node(SECSP_CATEGORY_RANGE_EXPR, $low, $high);
+			ABORT_IF_NULL($$);
+		  };
+
+level_expr
+		: reference_expr[sensitivity] COLON category_range_expr[categories] {
+			$$ = NODE create_level_node($sensitivity, $categories);
 			ABORT_IF_NULL($$);
 		  }
 		;
 
-decl_statement
-		: TYPE identifier[id] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_TYPE_DECL, NULL);
-			ABORT_IF_NULL($$);
-		  }
-		| TYPE_ATTRIBUTE identifier[id] EQUALS set_expression[expr] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_TYPE_ATTRIBUTE_DECL,
-						   $expr);
-			ABORT_IF_NULL($$);
-		  }
-		| TYPE_ATTRIBUTE identifier[id] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_TYPE_ATTRIBUTE_DECL,
-						   NULL);
-			ABORT_IF_NULL($$);
-		  }
-		| USER identifier[id] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_USER_DECL,
-						   NULL);
-			ABORT_IF_NULL($$);
-		  }
-		| ROLE identifier[id] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_ROLE_DECL,
-						   NULL);
+level_or_id: level_expr | reference_expr;
+
+level_range_expr
+		: level_or_id[low] MINUS level_or_id[high] {
+			$$ = NODE create_range_node(SECSP_LEVEL_RANGE_EXPR, $low, $high);
 			ABORT_IF_NULL($$);
 		  }
 		;
+
+level_range_or_id : level_range_expr | reference_expr;
+
+context_expr
+		: reference_expr[user] COLON reference_expr[role] COLON reference_expr[type] COLON level_range_or_id[range] {
+			$$ = NODE create_context_node($user, $role, $type, $range);
+			ABORT_IF_NULL($$);
+		  }
+		| reference_expr[user] COLON reference_expr[role] COLON reference_expr[type] {
+			$$ = NODE create_context_node($user, $role, $type, NULL);
+			ABORT_IF_NULL($$);
+		  };
 
 set_operator
 		: AND { $$ = SECSP_SET_AND; }
@@ -181,10 +210,7 @@ set_expression
 		  }
 		;
 
-/*
- * Allow using any valid statement keyword as an identifier, too
- */
-identifier: NAME | BLOCK | ROLE | ROLE_ATTRIBUTE | TYPE | TYPE_ATTRIBUTE;
+identifier: NAME;
 
 identifier_list
 		: identifier_list[list] COMMA identifier[id] {
@@ -209,6 +235,29 @@ identifier_list
 		;
 %%
 
+static struct secsp_context_node *
+create_context_node(struct secsp_node *user, struct secsp_node *role,
+			struct secsp_node *type, struct secsp_node *levelrange)
+{
+	struct secsp_context_node *node = NULL;
+	if (secsp_context_node_new(&node, user, role, type, levelrange) < 0) {
+		return NULL;
+	}
+
+	return node;
+}
+
+static struct secsp_level_node *
+create_level_node(struct secsp_node *sensitivity, struct secsp_node *categories)
+{
+	struct secsp_level_node *node = NULL;
+	if (secsp_level_node_new(&node, sensitivity, categories) < 0) {
+		return NULL;
+	}
+
+	return node;
+}
+
 static struct secsp_block_node *
 create_block_node(const char *name, int is_abstract,
                   struct secsp_node_list *body,
@@ -223,9 +272,9 @@ create_block_node(const char *name, int is_abstract,
 	return node;
 }
 
-static struct secsp_decl_node *
-create_decl_node(const char *name, enum secsp_node_flavor flavor,
-                 struct secsp_node *rval)
+static struct secsp_decl_node *create_decl_node(const char *name,
+						enum secsp_node_flavor flavor,
+						struct secsp_node *rval)
 {
 	struct secsp_decl_node *node = NULL;
 	if (secsp_decl_node_new(&node, name, flavor, rval) < 0) {
@@ -235,8 +284,19 @@ create_decl_node(const char *name, enum secsp_node_flavor flavor,
 	return node;
 }
 
-static struct secsp_sym_node *
-create_sym_node(const char *val)
+static struct secsp_range_node *create_range_node(enum secsp_node_flavor flavor,
+						  struct secsp_node *low,
+						  struct secsp_node *high)
+{
+	struct secsp_range_node *node = NULL;
+	if (secsp_range_node_new(&node, flavor, low, high) < 0) {
+		return NULL;
+	}
+
+	return node;
+}
+
+static struct secsp_sym_node *create_sym_node(const char *val)
 {
 	struct secsp_sym_node *node = NULL;
 	if (secsp_sym_node_new(&node, val) < 0) {
@@ -246,9 +306,9 @@ create_sym_node(const char *val)
 	return node;
 }
 
-static struct secsp_setexpr_node *
-create_setexpr_node(struct secsp_node *lhs, enum secsp_operator op,
-		    struct secsp_node *rhs)
+static struct secsp_setexpr_node *create_setexpr_node(struct secsp_node *lhs,
+						      enum secsp_operator op,
+						      struct secsp_node *rhs)
 {
 	struct secsp_setexpr_node *node = NULL;
 	if (secsp_setexpr_node_new(&node, lhs, op, rhs) < 0) {
@@ -258,11 +318,9 @@ create_setexpr_node(struct secsp_node *lhs, enum secsp_operator op,
 	return node;
 }
 
-void yyerror(YYLTYPE *loc, yyscan_t scanner,
-	     struct secsp_parse_result *result,
+void yyerror(YYLTYPE *loc, yyscan_t scanner, struct secsp_parse_result *result,
 	     char const *msg)
 {
-	printf("Error at line %d, column %d-%d: %s\n",
-		   loc->first_line, loc->first_column,
-		   loc->last_column, msg);
+	printf("Error at line %d, column %d-%d: %s\n", loc->first_line,
+	       loc->first_column, loc->last_column, msg);
 }

@@ -33,6 +33,26 @@ struct secsp_decl_node {
 	struct secsp_node *rval;
 };
 
+struct secsp_context_node {
+	struct secsp_node tag;
+	struct secsp_node *user;
+	struct secsp_node *role;
+	struct secsp_node *type;
+	struct secsp_node *levelrange;
+};
+
+struct secsp_level_node {
+	struct secsp_node tag;
+	struct secsp_node *sensitivity;
+	struct secsp_node *categories;
+};
+
+struct secsp_range_node {
+	struct secsp_node tag;
+	struct secsp_node *low;
+	struct secsp_node *high;
+};
+
 struct secsp_setexpr_node {
 	struct secsp_node tag;
 	struct secsp_node *lhs;
@@ -191,6 +211,62 @@ LIBSECSP_EXPORT int secsp_setexpr_node_new(struct secsp_setexpr_node **out,
 	node->lhs = lhs;
 	node->operator= op;
 	node->rhs = rhs;
+	*out = node;
+
+	return 0;
+}
+
+LIBSECSP_EXPORT int secsp_context_node_new(struct secsp_context_node **out,
+					   struct secsp_node *user,
+					   struct secsp_node *role,
+					   struct secsp_node *type,
+					   struct secsp_node *levelrange)
+{
+	struct secsp_context_node *node = calloc(1, sizeof *node);
+	if (!node) {
+		return -ENOMEM;
+	}
+
+	node->tag.flavor = SECSP_CONTEXT_EXPR;
+	node->user = user;
+	node->role = role;
+	node->type = type;
+	node->levelrange = levelrange;
+
+	*out = node;
+	return 0;
+}
+
+LIBSECSP_EXPORT int secsp_range_node_new(struct secsp_range_node **out,
+				  enum secsp_node_flavor type,
+				  struct secsp_node *low,
+				  struct secsp_node *high)
+{
+	struct secsp_range_node *node = calloc(1, sizeof *node);
+	if (!node) {
+		return -ENOMEM;
+	}
+
+	node->tag.flavor = type;
+	node->low = low;
+	node->high = high;
+	*out = node;
+
+	return 0;
+}
+
+LIBSECSP_EXPORT int secsp_level_node_new(struct secsp_level_node **out,
+					 struct secsp_node *sensitivity,
+					 struct secsp_node *categories)
+{
+	struct secsp_level_node *node = calloc(1, sizeof *node);
+	if (!node) {
+		return -ENOMEM;
+	}
+
+	node->tag.flavor = SECSP_LEVEL_EXPR;
+	node->sensitivity = sensitivity;
+	node->categories = categories;
 	*out = node;
 
 	return 0;
