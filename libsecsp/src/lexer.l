@@ -32,7 +32,7 @@
 "block" { return TOK_BLOCK; }
 
 [a-z0-9_]+	{ yylval->name = strdup(yytext); return TOK_NAME; }
-[\s\t ]+	{}
+[\t ]+	{}
 %%
 
 
