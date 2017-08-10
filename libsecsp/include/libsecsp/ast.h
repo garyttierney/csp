@@ -8,14 +8,7 @@
 enum secsp_node_flavor {
 	SECSP_SYMBOL,
 	SECSP_BLOCK,
-	SECSP_DECL_START,
-	SECSP_TYPE_DECL,
-	SECSP_TYPE_ATTRIBUTE_DECL,
-	SECSP_ROLE_DECL,
-	SECSP_ROLE_ATTRIBUTE_DECL,
-	SECSP_USER_DECL,
-	SECSP_CONTEXT_DECL,
-	SECSP_DECL_END,
+	SECSP_DECL,
 	SECSP_SET_EXPR,
 	SECSP_CONTEXT_EXPR,
 	SECSP_LEVEL_RANGE_EXPR,
@@ -103,7 +96,12 @@ struct secsp_decl_node;
  * @param rval The initial (or constant) value of the symbol being declared.
  */
 int secsp_decl_node_new(struct secsp_decl_node **node, const char *name,
-			enum secsp_node_flavor flavor, struct secsp_node *rval);
+			const char *type, struct secsp_node *rval);
+
+const char *secsp_decl_get_name(struct secsp_decl_node *node);
+const char *secsp_decl_get_type(struct secsp_decl_node *node);
+int secsp_decl_has_initializer(struct secsp_decl_node *node);
+struct secsp_node *secsp_decl_get_initializer(struct secsp_decl_node *node);
 
 struct secsp_setexpr_node;
 
@@ -118,16 +116,31 @@ int secsp_context_node_new(struct secsp_context_node **context,
 			   struct secsp_node *user, struct secsp_node *role,
 			   struct secsp_node *type, struct secsp_node *levelrange);
 
+struct secsp_node* secsp_context_get_user(struct secsp_context_node *node);
+struct secsp_node* secsp_context_get_role(struct secsp_context_node *node);
+struct secsp_node* secsp_context_get_type(struct secsp_context_node *node);
+int secsp_context_has_levelrange(struct secsp_context_node *node);
+struct secsp_node* secsp_context_get_levelrange(struct secsp_context_node *node);
+
+
 struct secsp_level_node;
 
 int secsp_level_node_new(struct secsp_level_node **node,
 			    struct secsp_node *sensitivity,
 			    struct secsp_node *categories);
 
+struct secsp_node *secsp_level_get_sensitivity(struct secsp_level_node *node);
+int secsp_level_has_categories(struct secsp_level_node *node);
+struct secsp_node *secsp_level_get_categories(struct secsp_level_node *node);
+
 struct secsp_range_node;
 
 int secsp_range_node_new(struct secsp_range_node **node,
 			    enum secsp_node_flavor flavor,
 			    struct secsp_node *low, struct secsp_node *high);
+
+struct secsp_node *secsp_range_get_low(struct secsp_range_node *node);
+struct secsp_node *secsp_range_get_high(struct secsp_range_node *node);
+
 
 #endif

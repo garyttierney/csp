@@ -29,6 +29,7 @@ struct secsp_block_node {
 
 struct secsp_decl_node {
 	struct secsp_node tag;
+	char *type;
 	char *name;
 	struct secsp_node *rval;
 };
@@ -177,24 +178,41 @@ secsp_blocp_get_statements(struct secsp_block_node *node)
 
 LIBSECSP_EXPORT int secsp_decl_node_new(struct secsp_decl_node **out,
 					const char *name,
-					enum secsp_node_flavor flavor,
+					const char *type,
 					struct secsp_node *rval)
 {
-	if (flavor <= SECSP_DECL_START || flavor >= SECSP_DECL_END) {
-		return -1;
-	}
-
 	struct secsp_decl_node *node = calloc(1, sizeof *node);
 	if (!node) {
 		return -ENOMEM;
 	}
 
-	node->tag.flavor = flavor;
+	node->tag.flavor = SECSP_DECL;
+	node->type = strdup(type);
 	node->name = strdup(name);
 	node->rval = rval;
 	*out = node;
 
 	return 0;
+}
+
+LIBSECSP_EXPORT const char *secsp_decl_get_name(struct secsp_decl_node *node)
+{
+	return node->name;
+}
+
+LIBSECSP_EXPORT const char *secsp_decl_get_type(struct secsp_decl_node *node)
+{
+	return node->type;
+}
+
+LIBSECSP_EXPORT int secsp_decl_has_initializer(struct secsp_decl_node *node)
+{
+	return node->rval != NULL;
+}
+
+LIBSECSP_EXPORT struct secsp_node *secsp_decl_get_initializer(struct secsp_decl_node *node)
+{
+	return node->rval;
 }
 
 LIBSECSP_EXPORT int secsp_setexpr_node_new(struct secsp_setexpr_node **out,
@@ -237,6 +255,29 @@ LIBSECSP_EXPORT int secsp_context_node_new(struct secsp_context_node **out,
 	return 0;
 }
 
+LIBSECSP_EXPORT struct secsp_node* secsp_context_get_user(struct secsp_context_node *node)
+{
+	return node->user;
+}
+LIBSECSP_EXPORT struct secsp_node* secsp_context_get_role(struct secsp_context_node *node)
+{
+	return node->role;
+}
+LIBSECSP_EXPORT struct secsp_node* secsp_context_get_type(struct secsp_context_node *node)
+{
+	return node->type;
+}
+
+LIBSECSP_EXPORT int secsp_context_has_levelrange(struct secsp_context_node *node)
+{
+	return node->levelrange != NULL;
+}
+
+LIBSECSP_EXPORT struct secsp_node* secsp_context_get_levelrange(struct secsp_context_node *node)
+{
+	return node->levelrange;
+}
+
 LIBSECSP_EXPORT int secsp_range_node_new(struct secsp_range_node **out,
 				  enum secsp_node_flavor type,
 				  struct secsp_node *low,
@@ -255,6 +296,16 @@ LIBSECSP_EXPORT int secsp_range_node_new(struct secsp_range_node **out,
 	return 0;
 }
 
+LIBSECSP_EXPORT struct secsp_node *secsp_range_get_low(struct secsp_range_node *node)
+{
+	return node->low;
+}
+
+LIBSECSP_EXPORT struct secsp_node *secsp_range_get_high(struct secsp_range_node *node)
+{
+	return node->high;
+}
+
 LIBSECSP_EXPORT int secsp_level_node_new(struct secsp_level_node **out,
 					 struct secsp_node *sensitivity,
 					 struct secsp_node *categories)
@@ -270,4 +321,19 @@ LIBSECSP_EXPORT int secsp_level_node_new(struct secsp_level_node **out,
 	*out = node;
 
 	return 0;
+}
+
+LIBSECSP_EXPORT struct secsp_node *secsp_level_get_sensitivity(struct secsp_level_node *node)
+{
+	return node->sensitivity;
+}
+
+LIBSECSP_EXPORT int secsp_level_has_categories(struct secsp_level_node *node)
+{
+	return node->categories != NULL;
+}
+
+LIBSECSP_EXPORT struct secsp_node *secsp_level_get_categories(struct secsp_level_node *node)
+{
+	return node->categories;
 }

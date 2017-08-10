@@ -37,7 +37,7 @@ create_block_node(const char *name, int is_abstract,
                   struct secsp_node_list *inherits);
 
 static struct secsp_decl_node *
-create_decl_node(const char *name, enum secsp_node_flavor flavor,
+create_decl_node(const char *name, const char *type,
                  struct secsp_node *rval);
 
 static struct secsp_sym_node *create_sym_node(const char *val);
@@ -137,11 +137,11 @@ block_statement
 		;
 decl_statement
 		: identifier[type] identifier[id] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_TYPE_DECL, NULL);
+			$$ = NODE create_decl_node($id, $type, NULL);
 			ABORT_IF_NULL($$);
 		  }
 		| identifier[type] identifier[id] EQUALS expression[expr] SEMICOLON {
-			$$ = NODE create_decl_node($id, SECSP_TYPE_DECL, $expr);
+			$$ = NODE create_decl_node($id, $type, $expr);
 			ABORT_IF_NULL($$);
 		  };
 expression
@@ -273,11 +273,11 @@ create_block_node(const char *name, int is_abstract,
 }
 
 static struct secsp_decl_node *create_decl_node(const char *name,
-						enum secsp_node_flavor flavor,
+						const char *type,
 						struct secsp_node *rval)
 {
 	struct secsp_decl_node *node = NULL;
-	if (secsp_decl_node_new(&node, name, flavor, rval) < 0) {
+	if (secsp_decl_node_new(&node, name, type, rval) < 0) {
 		return NULL;
 	}
 

@@ -1,4 +1,9 @@
-abstract block a {}
-block testconrete inherits test, testb, testc {}
-type v;
-block test inherits a {}
+user u;
+role r;
+type t;
+sensitivity classified;
+sensitivity unclassified;
+level l = unclassified;
+level h = classified:c0.c255;
+level_range low_high = l - h;
+context c = u:r:t:low_high;
